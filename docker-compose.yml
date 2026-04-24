@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  cbg-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cbg-fastapi-app
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    environment:
+      # MySQL数据库配置
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      
+      # MinIO配置
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME}
+      - MINIO_SECURE=${MINIO_SECURE}
+      
+      # JWT配置
+      - SECRET_KEY=${SECRET_KEY}
+      - ALGORITHM=${ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      
+      # 应用配置
+      - HOST=0.0.0.0
+      - PORT=${PORT:-8000}
+      - DEBUG=${DEBUG:-False}
+    
+    volumes:
+      # 文件映射：将本地代码映射到容器内，便于后续更新
+      - ./app:/app/app:ro
+      - ./health_check.py:/app/health_check.py:ro
+      - ./requirements.txt:/app/requirements.txt:ro
+      - ./.env:/app/.env:ro
+      # 日志目录映射
+      - ./logs:/app/logs
+      
+    restart: unless-stopped
+    networks:
+      - cbg-network
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 180s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+networks:
+  cbg-network:
+    driver: bridge
