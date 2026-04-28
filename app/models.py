@@ -158,8 +158,8 @@ class Image(Base):
     __tablename__ = "images"
     
     id = Column(Integer, primary_key=True, index=True)
-    entity_type = Column(String(20), nullable=False)  # fabric, project, pattern, item
-    entity_id = Column(Integer, nullable=False)       # 关联的实体ID
+    entity_type = Column(String(20), nullable=True)  # fabric, project, pattern, item（可选，支持临时上传）
+    entity_id = Column(Integer, nullable=True)       # 关联的实体ID（可选）
     image_url = Column(String(500), nullable=False)
     image_type = Column(String(20), default="normal")  # cover, detail, normal
     sort_order = Column(Integer, default=0)  # 排序

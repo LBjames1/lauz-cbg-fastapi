@@ -5,6 +5,7 @@ from ..database import get_db
 from ..models import Item, Image
 from ..schemas import ItemCreate, ItemUpdate, ItemResponse, ApiResponse
 from ..utils.pagination import Pagination
+from ..utils.query_helpers import serialize_model, serialize_list
 from ..config import settings
 
 router = APIRouter()
@@ -46,10 +47,13 @@ def create_item(item: ItemCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_item)
     
+    # 序列化为字典格式
+    item_dict = serialize_model(db_item)
+    
     return {
         "code": 201,
         "message": "Item created successfully",
-        "data": db_item
+        "data": item_dict
     }
 
 @router.get("/{item_id}", response_model=ApiResponse)
@@ -65,10 +69,13 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
         Image.entity_id == item_id
     ).all()
     
+    # 序列化为字典格式
+    item_dict = serialize_model(item)
+    
     return {
         "code": 200,
         "message": "",
-        "data": item
+        "data": item_dict
     }
 
 @router.get("", response_model=ApiResponse)
@@ -125,12 +132,15 @@ def list_items(
             Image.entity_id == item.id
         ).all()
     
+    # 序列化为字典格式
+    serialized_items = serialize_list(items)
+    
     # 转换为标准分页格式
     return {
         "code": 200,
         "message": "",
         "data": {
-            "items": items,
+            "items": serialized_items,
             "total": total,
             "page": page,
             "limit": limit,
@@ -176,10 +186,14 @@ def update_item(item_id: int, item: ItemUpdate, db: Session = Depends(get_db)):
     
     db.commit()
     db.refresh(db_item)
+    
+    # 序列化为字典格式
+    item_dict = serialize_model(db_item)
+    
     return {
         "code": 200,
         "message": "Item updated successfully",
-        "data": db_item
+        "data": item_dict
     }
 
 @router.get("/count", response_model=ApiResponse)

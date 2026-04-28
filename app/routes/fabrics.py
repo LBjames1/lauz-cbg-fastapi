@@ -6,6 +6,7 @@ from ..database import get_db
 from ..models import Fabric, Image
 from ..schemas import FabricCreate, FabricUpdate, FabricResponse, ApiResponse
 from ..utils.pagination import Pagination
+from ..utils.query_helpers import serialize_model, serialize_list
 from ..config import settings
 
 router = APIRouter()
@@ -39,8 +40,11 @@ def get_recent_fabrics(
             Image.entity_id == fabric.id
         ).all()
     
+    # 序列化为字典格式
+    serialized_fabrics = serialize_list(fabrics)
+    
     result = {
-        "items": fabrics,
+        "items": serialized_fabrics,
         "total": total,
         "page": page,
         "limit": limit,
@@ -101,10 +105,13 @@ def create_fabric(fabric: FabricCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_fabric)
     
+    # 序列化为字典格式
+    fabric_dict = serialize_model(db_fabric)
+    
     return {
         "code": 201,
         "message": "Fabric created successfully",
-        "data": db_fabric
+        "data": fabric_dict
     }
 
 @router.get("/{fabric_id}", response_model=ApiResponse)
@@ -120,10 +127,13 @@ def get_fabric(fabric_id: int, db: Session = Depends(get_db)):
         Image.entity_id == fabric_id
     ).all()
     
+    # 序列化为字典格式
+    fabric_dict = serialize_model(fabric)
+    
     return {
         "code": 200,
         "message": "",
-        "data": fabric
+        "data": fabric_dict
     }
 
 @router.get("", response_model=ApiResponse)
@@ -216,12 +226,15 @@ def list_fabrics(
             Image.entity_id == fabric.id
         ).all()
     
+    # 序列化为字典格式
+    serialized_fabrics = serialize_list(fabrics)
+    
     # 转换为标准分页格式
     return {
         "code": 200,
         "message": "",
         "data": {
-            "items": fabrics,
+            "items": serialized_fabrics,
             "total": total,
             "page": page,
             "limit": limit,
@@ -281,10 +294,14 @@ def update_fabric(fabric_id: int, fabric: FabricUpdate, db: Session = Depends(ge
     
     db.commit()
     db.refresh(db_fabric)
+    
+    # 序列化为字典格式
+    fabric_dict = serialize_model(db_fabric)
+    
     return {
         "code": 200,
         "message": "Fabric updated successfully",
-        "data": db_fabric
+        "data": fabric_dict
     }
 
 @router.get("/count", response_model=ApiResponse)

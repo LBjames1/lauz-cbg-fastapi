@@ -1,6 +1,7 @@
 """通用查询工具函数"""
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Any
+from datetime import datetime
 
 
 def filter_by_code_type(query, model, db: Session, code_type: str, code_id: int, entity_type: str = None):
@@ -141,3 +142,56 @@ def filter_by_code_ids(query, model, db: Session, code_type: str, code_ids: List
                     return query.filter(model.id == -1)
     
     return query
+
+
+def serialize_model(model_instance: Any) -> dict:
+    """
+    将SQLAlchemy模型实例转换为可序列化的字典
+    
+    Args:
+        model_instance: SQLAlchemy模型实例
+        
+    Returns:
+        可序列化的字典
+    """
+    if model_instance is None:
+        return None
+    
+    result = {}
+    for column in model_instance.__table__.columns:
+        value = getattr(model_instance, column.name)
+        # 处理datetime类型
+        if isinstance(value, datetime):
+            value = value.isoformat()
+        result[column.name] = value
+    
+    # 处理关系属性（如 images, colors 等）
+    for attr_name in dir(model_instance):
+        # 跳过私有属性和方法
+        if attr_name.startswith('_') or callable(getattr(model_instance, attr_name)):
+            continue
+        
+        # 检查是否是关系属性
+        attr_value = getattr(model_instance, attr_name)
+        if attr_name not in result and hasattr(attr_value, '__class__'):
+            # 如果是列表（多对多关系）
+            if isinstance(attr_value, list):
+                result[attr_name] = [serialize_model(item) if hasattr(item, '__table__') else item for item in attr_value]
+            # 如果是单个对象（一对多关系）
+            elif hasattr(attr_value, '__table__'):
+                result[attr_name] = serialize_model(attr_value)
+    
+    return result
+
+
+def serialize_list(model_instances: List[Any]) -> List[dict]:
+    """
+    将SQLAlchemy模型实例列表转换为可序列化的字典列表
+    
+    Args:
+        model_instances: SQLAlchemy模型实例列表
+        
+    Returns:
+        可序列化的字典列表
+    """
+    return [serialize_model(instance) for instance in model_instances]

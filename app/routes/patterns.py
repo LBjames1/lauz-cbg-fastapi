@@ -5,6 +5,7 @@ from ..database import get_db
 from ..models import Pattern, Image
 from ..schemas import PatternCreate, PatternUpdate, PatternResponse, ApiResponse
 from ..utils.pagination import Pagination
+from ..utils.query_helpers import serialize_model, serialize_list
 from ..config import settings
 
 router = APIRouter()
@@ -54,10 +55,13 @@ def create_pattern(pattern: PatternCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_pattern)
     
+    # 序列化为字典格式
+    pattern_dict = serialize_model(db_pattern)
+    
     return {
         "code": 201,
         "message": "Pattern created successfully",
-        "data": db_pattern
+        "data": pattern_dict
     }
 
 @router.get("/{pattern_id}", response_model=ApiResponse)
@@ -73,10 +77,13 @@ def get_pattern(pattern_id: int, db: Session = Depends(get_db)):
         Image.entity_id == pattern_id
     ).all()
     
+    # 序列化为字典格式
+    pattern_dict = serialize_model(pattern)
+    
     return {
         "code": 200,
         "message": "",
-        "data": pattern
+        "data": pattern_dict
     }
 
 @router.get("", response_model=ApiResponse)
@@ -135,12 +142,15 @@ def list_patterns(
             Image.entity_id == pattern.id
         ).all()
     
+    # 序列化为字典格式
+    serialized_patterns = serialize_list(patterns)
+    
     # 转换为标准分页格式
     return {
         "code": 200,
         "message": "",
         "data": {
-            "items": patterns,
+            "items": serialized_patterns,
             "total": total,
             "page": page,
             "limit": limit,
@@ -197,10 +207,14 @@ def update_pattern(pattern_id: int, pattern: PatternUpdate, db: Session = Depend
     
     db.commit()
     db.refresh(db_pattern)
+    
+    # 序列化为字典格式
+    pattern_dict = serialize_model(db_pattern)
+    
     return {
         "code": 200,
         "message": "Pattern updated successfully",
-        "data": db_pattern
+        "data": pattern_dict
     }
 
 @router.get("/count", response_model=ApiResponse)

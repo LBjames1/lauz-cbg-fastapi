@@ -5,6 +5,7 @@ from ..database import get_db
 from ..models import Project, Image
 from ..schemas import ProjectCreate, ProjectUpdate, ProjectResponse, ApiResponse
 from ..utils.pagination import Pagination
+from ..utils.query_helpers import serialize_model, serialize_list
 from ..config import settings
 
 router = APIRouter()
@@ -65,10 +66,13 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_project)
     
+    # 序列化为字典格式
+    project_dict = serialize_model(db_project)
+    
     return {
         "code": 201,
         "message": "Project created successfully",
-        "data": db_project
+        "data": project_dict
     }
 
 @router.get("/{project_id}", response_model=ApiResponse)
@@ -84,10 +88,13 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
         Image.entity_id == project_id
     ).all()
     
+    # 序列化为字典格式
+    project_dict = serialize_model(project)
+    
     return {
         "code": 200,
         "message": "",
-        "data": project
+        "data": project_dict
     }
 
 @router.get("", response_model=ApiResponse)
@@ -152,12 +159,15 @@ def list_projects(
             Image.entity_id == project.id
         ).all()
     
+    # 序列化为字典格式
+    serialized_projects = serialize_list(projects)
+    
     # 转换为标准分页格式
     return {
         "code": 200,
         "message": "",
         "data": {
-            "items": projects,
+            "items": serialized_projects,
             "total": total,
             "page": page,
             "limit": limit,
@@ -228,10 +238,14 @@ def update_project(project_id: int, project: ProjectUpdate, db: Session = Depend
     
     db.commit()
     db.refresh(db_project)
+    
+    # 序列化为字典格式
+    project_dict = serialize_model(db_project)
+    
     return {
         "code": 200,
         "message": "Project updated successfully",
-        "data": db_project
+        "data": project_dict
     }
 
 @router.get("/count", response_model=ApiResponse)

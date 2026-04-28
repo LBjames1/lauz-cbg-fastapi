@@ -46,6 +46,10 @@ def upload_file(client, bucket_name, object_name, file_data, content_type="appli
 def get_presigned_url(client, bucket_name, object_name, expires=604800):
     """获取预签名URL"""
     try:
+        from datetime import timedelta
+        # 如果 expires 是整数（秒数），转换为 timedelta
+        if isinstance(expires, int):
+            expires = timedelta(seconds=expires)
         return client.presigned_get_object(bucket_name, object_name, expires=expires)
     except S3Error as e:
         raise Exception(f"Failed to get presigned URL: {e}")

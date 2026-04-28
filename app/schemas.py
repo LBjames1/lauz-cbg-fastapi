@@ -57,8 +57,8 @@ class ImageUpdate(ImageBase):
 
 class ImageResponse(ImageBase):
     id: int
-    entity_type: str
-    entity_id: int
+    entity_type: Optional[str] = None
+    entity_id: Optional[int] = None
     created_at: datetime
     updated_at: datetime
     
