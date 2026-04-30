@@ -21,7 +21,7 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     image_ids = project.image_ids or []
     
     # 创建作品主体（排除关联字段）
-    project_dict = project.dict(exclude={'pattern_id', 'type_id', 'fabric_ids', 'technique_ids', 'images'})
+    project_dict = project.dict(exclude={'pattern_id', 'type_id', 'fabric_ids', 'technique_ids', 'image_ids', 'images'})
     db_project = Project(**project_dict)
     db.add(db_project)
     db.commit()
@@ -190,7 +190,7 @@ def update_project(project_id: int, project: ProjectUpdate, db: Session = Depend
     image_ids = getattr(project, 'image_ids', None)
     
     # 更新基本字段
-    update_dict = project.dict(exclude_unset=True, exclude={'pattern_id', 'type_id', 'fabric_ids', 'technique_ids', 'images'})
+    update_dict = project.dict(exclude_unset=True, exclude={'pattern_id', 'type_id', 'fabric_ids', 'technique_ids', 'image_ids', 'images'})
     for key, value in update_dict.items():
         setattr(db_project, key, value)
     

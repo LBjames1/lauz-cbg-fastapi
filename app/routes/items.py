@@ -18,7 +18,7 @@ def create_item(item: ItemCreate, db: Session = Depends(get_db)):
     image_ids = item.image_ids or []
     
     # 创建物品主体（排除关联字段）
-    item_dict = item.dict(exclude={'type_id', 'images'})
+    item_dict = item.dict(exclude={'type_id', 'image_ids', 'images'})
     db_item = Item(**item_dict)
     db.add(db_item)
     db.commit()
@@ -160,7 +160,7 @@ def update_item(item_id: int, item: ItemUpdate, db: Session = Depends(get_db)):
     image_ids = getattr(item, 'image_ids', None)
     
     # 更新基本字段
-    update_dict = item.dict(exclude_unset=True, exclude={'type_id', 'images'})
+    update_dict = item.dict(exclude_unset=True, exclude={'type_id', 'image_ids', 'images'})
     for key, value in update_dict.items():
         setattr(db_item, key, value)
     

@@ -67,7 +67,7 @@ def create_fabric(fabric: FabricCreate, db: Session = Depends(get_db)):
     image_ids = fabric.image_ids or []
     
     # 创建布料主体（排除关联字段）
-    fabric_dict = fabric.dict(exclude={'material_id', 'thickness_id', 'color_ids', 'images'})
+    fabric_dict = fabric.dict(exclude={'material_id', 'thickness_id', 'color_ids', 'image_ids', 'images'})
     db_fabric = Fabric(**fabric_dict)
     db.add(db_fabric)
     db.commit()
@@ -157,6 +157,7 @@ def list_fabrics(
     skip = (page - 1) * limit
     
     # 直接查询数据
+    from ..utils.query_helpers import filter_by_code_type, filter_by_code_ids
     query = db.query(Fabric)
     
     # 构建基础过滤条件
@@ -176,34 +177,11 @@ def list_fabrics(
     
     # 处理通用查询参数（动态字段查询）
     if code_type and code_id:
-        if code_type == "material":
-            filters["material_id"] = code_id
-        elif code_type == "thickness":
-            filters["thickness_id"] = code_id
-        elif code_type == "color":
-            # 颜色是多对多关系，需要特殊处理
-            from ..models import FabricColor
-            fabric_ids = db.query(FabricColor.fabric_id).filter(
-                FabricColor.code_id == code_id
-            ).all()
-            fabric_ids = [fid[0] for fid in fabric_ids]
-            if fabric_ids:
-                query = query.filter(Fabric.id.in_(fabric_ids))
-            else:
-                # 如果没有匹配的布料，返回空结果
-                query = query.filter(Fabric.id == -1)
+        query = filter_by_code_type(query, Fabric, db, code_type, code_id, entity_type='fabric')
     
     # 处理颜色列表（多对多关系）
     if color_ids:
-        from ..models import FabricColor
-        fabric_ids = db.query(FabricColor.fabric_id).filter(
-            FabricColor.code_id.in_(color_ids)
-        ).all()
-        fabric_ids = [fid[0] for fid in fabric_ids]
-        if fabric_ids:
-            query = query.filter(Fabric.id.in_(fabric_ids))
-        else:
-            query = query.filter(Fabric.id == -1)
+        query = filter_by_code_ids(query, Fabric, db, 'fabric_color', color_ids, entity_type='fabric')
     
     # 应用过滤条件
     for key, value in filters.items():
@@ -256,7 +234,7 @@ def update_fabric(fabric_id: int, fabric: FabricUpdate, db: Session = Depends(ge
     image_ids = getattr(fabric, 'image_ids', None)
     
     # 更新基本字段
-    update_dict = fabric.dict(exclude_unset=True, exclude={'material_id', 'thickness_id', 'color_ids', 'images'})
+    update_dict = fabric.dict(exclude_unset=True, exclude={'material_id', 'thickness_id', 'color_ids', 'image_ids', 'images'})
     for key, value in update_dict.items():
         setattr(db_fabric, key, value)
     

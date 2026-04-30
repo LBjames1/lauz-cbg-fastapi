@@ -19,7 +19,7 @@ def create_pattern(pattern: PatternCreate, db: Session = Depends(get_db)):
     image_ids = pattern.image_ids or []
     
     # 创建纸样主体（排除关联字段）
-    pattern_dict = pattern.dict(exclude={'category_id', 'style_ids', 'images'})
+    pattern_dict = pattern.dict(exclude={'category_id', 'style_ids', 'image_ids', 'images'})
     db_pattern = Pattern(**pattern_dict)
     db.add(db_pattern)
     db.commit()
@@ -171,7 +171,7 @@ def update_pattern(pattern_id: int, pattern: PatternUpdate, db: Session = Depend
     image_ids = getattr(pattern, 'image_ids', None)
     
     # 更新基本字段
-    update_dict = pattern.dict(exclude_unset=True, exclude={'category_id', 'style_ids', 'images'})
+    update_dict = pattern.dict(exclude_unset=True, exclude={'category_id', 'style_ids', 'image_ids', 'images'})
     for key, value in update_dict.items():
         setattr(db_pattern, key, value)
     
