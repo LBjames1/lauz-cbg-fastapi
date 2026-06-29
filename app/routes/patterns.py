@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
@@ -11,7 +11,7 @@ from ..config import settings
 router = APIRouter()
 
 @router.post("", response_model=ApiResponse, status_code=status.HTTP_201_CREATED)
-def create_pattern(pattern: PatternCreate, db: Session = Depends(get_db)):
+def create_pattern(request: Request, pattern: PatternCreate, db: Session = Depends(get_db)):
     """创建纸样（包含编码和图片关联）"""
     # 提取关联字段
     category_id = pattern.category_id
@@ -55,8 +55,11 @@ def create_pattern(pattern: PatternCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_pattern)
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    pattern_dict = serialize_model(db_pattern)
+    pattern_dict = serialize_model(db_pattern, base_url)
     
     return {
         "code": 201,
@@ -65,7 +68,7 @@ def create_pattern(pattern: PatternCreate, db: Session = Depends(get_db)):
     }
 
 @router.get("/{pattern_id}", response_model=ApiResponse)
-def get_pattern(pattern_id: int, db: Session = Depends(get_db)):
+def get_pattern(pattern_id: int, request: Request, db: Session = Depends(get_db)):
     """获取纸样详情（包含关联的编码和图片信息）"""
     pattern = db.query(Pattern).filter(Pattern.id == pattern_id).first()
     if not pattern:
@@ -77,8 +80,11 @@ def get_pattern(pattern_id: int, db: Session = Depends(get_db)):
         Image.entity_id == pattern_id
     ).all()
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    pattern_dict = serialize_model(pattern)
+    pattern_dict = serialize_model(pattern, base_url)
     
     return {
         "code": 200,
@@ -88,6 +94,7 @@ def get_pattern(pattern_id: int, db: Session = Depends(get_db)):
 
 @router.get("", response_model=ApiResponse)
 def list_patterns(
+    request: Request,
     page: int = Query(1, ge=1, description="页码，从 1 开始"),
     limit: int = Query(10, ge=1, le=100, description="每页数量"),
     name: Optional[str] = Query(None, description="纸样名称"),
@@ -142,8 +149,11 @@ def list_patterns(
             Image.entity_id == pattern.id
         ).all()
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    serialized_patterns = serialize_list(patterns)
+    serialized_patterns = serialize_list(patterns, base_url)
     
     # 转换为标准分页格式
     return {
@@ -159,7 +169,7 @@ def list_patterns(
     }
 
 @router.put("/{pattern_id}", response_model=ApiResponse)
-def update_pattern(pattern_id: int, pattern: PatternUpdate, db: Session = Depends(get_db)):
+def update_pattern(pattern_id: int, request: Request, pattern: PatternUpdate, db: Session = Depends(get_db)):
     """更新纸样（包含编码和图片关联）"""
     db_pattern = db.query(Pattern).filter(Pattern.id == pattern_id).first()
     if not db_pattern:
@@ -208,8 +218,11 @@ def update_pattern(pattern_id: int, pattern: PatternUpdate, db: Session = Depend
     db.commit()
     db.refresh(db_pattern)
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    pattern_dict = serialize_model(db_pattern)
+    pattern_dict = serialize_model(db_pattern, base_url)
     
     return {
         "code": 200,

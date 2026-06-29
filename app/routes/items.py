@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
@@ -11,7 +11,7 @@ from ..config import settings
 router = APIRouter()
 
 @router.post("", response_model=ApiResponse, status_code=status.HTTP_201_CREATED)
-def create_item(item: ItemCreate, db: Session = Depends(get_db)):
+def create_item(request: Request, item: ItemCreate, db: Session = Depends(get_db)):
     """创建物品（包含编码和图片关联）"""
     # 提取关联字段
     type_id = item.type_id
@@ -47,8 +47,11 @@ def create_item(item: ItemCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_item)
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    item_dict = serialize_model(db_item)
+    item_dict = serialize_model(db_item, base_url)
     
     return {
         "code": 201,
@@ -57,7 +60,7 @@ def create_item(item: ItemCreate, db: Session = Depends(get_db)):
     }
 
 @router.get("/{item_id}", response_model=ApiResponse)
-def get_item(item_id: int, db: Session = Depends(get_db)):
+def get_item(item_id: int, request: Request, db: Session = Depends(get_db)):
     """获取物品详情（包含关联的编码和图片信息）"""
     item = db.query(Item).filter(Item.id == item_id).first()
     if not item:
@@ -69,8 +72,11 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
         Image.entity_id == item_id
     ).all()
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    item_dict = serialize_model(item)
+    item_dict = serialize_model(item, base_url)
     
     return {
         "code": 200,
@@ -80,6 +86,7 @@ def get_item(item_id: int, db: Session = Depends(get_db)):
 
 @router.get("", response_model=ApiResponse)
 def list_items(
+    request: Request,
     page: int = Query(1, ge=1, description="页码，从 1 开始"),
     limit: int = Query(10, ge=1, le=100, description="每页数量"),
     name: Optional[str] = Query(None, description="物品名称"),
@@ -132,8 +139,11 @@ def list_items(
             Image.entity_id == item.id
         ).all()
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    serialized_items = serialize_list(items)
+    serialized_items = serialize_list(items, base_url)
     
     # 转换为标准分页格式
     return {
@@ -149,7 +159,7 @@ def list_items(
     }
 
 @router.put("/{item_id}", response_model=ApiResponse)
-def update_item(item_id: int, item: ItemUpdate, db: Session = Depends(get_db)):
+def update_item(item_id: int, request: Request, item: ItemUpdate, db: Session = Depends(get_db)):
     """更新物品（包含编码和图片关联）"""
     db_item = db.query(Item).filter(Item.id == item_id).first()
     if not db_item:
@@ -187,8 +197,11 @@ def update_item(item_id: int, item: ItemUpdate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_item)
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    item_dict = serialize_model(db_item)
+    item_dict = serialize_model(db_item, base_url)
     
     return {
         "code": 200,

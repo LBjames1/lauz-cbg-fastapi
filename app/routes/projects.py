@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
@@ -11,7 +11,7 @@ from ..config import settings
 router = APIRouter()
 
 @router.post("", response_model=ApiResponse, status_code=status.HTTP_201_CREATED)
-def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
+def create_project(request: Request, project: ProjectCreate, db: Session = Depends(get_db)):
     """创建作品（包含编码和图片关联）"""
     # 提取关联字段
     pattern_id = project.pattern_id
@@ -66,8 +66,11 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_project)
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    project_dict = serialize_model(db_project)
+    project_dict = serialize_model(db_project, base_url)
     
     return {
         "code": 201,
@@ -76,7 +79,7 @@ def create_project(project: ProjectCreate, db: Session = Depends(get_db)):
     }
 
 @router.get("/{project_id}", response_model=ApiResponse)
-def get_project(project_id: int, db: Session = Depends(get_db)):
+def get_project(project_id: int, request: Request, db: Session = Depends(get_db)):
     """获取作品详情（包含关联的编码和图片信息）"""
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -88,8 +91,11 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
         Image.entity_id == project_id
     ).all()
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    project_dict = serialize_model(project)
+    project_dict = serialize_model(project, base_url)
     
     return {
         "code": 200,
@@ -99,6 +105,7 @@ def get_project(project_id: int, db: Session = Depends(get_db)):
 
 @router.get("", response_model=ApiResponse)
 def list_projects(
+    request: Request,
     page: int = Query(1, ge=1, description="页码，从 1 开始"),
     limit: int = Query(10, ge=1, le=100, description="每页数量"),
     title: Optional[str] = Query(None, description="作品标题"),
@@ -159,8 +166,11 @@ def list_projects(
             Image.entity_id == project.id
         ).all()
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    serialized_projects = serialize_list(projects)
+    serialized_projects = serialize_list(projects, base_url)
     
     # 转换为标准分页格式
     return {
@@ -176,7 +186,7 @@ def list_projects(
     }
 
 @router.put("/{project_id}", response_model=ApiResponse)
-def update_project(project_id: int, project: ProjectUpdate, db: Session = Depends(get_db)):
+def update_project(project_id: int, request: Request, project: ProjectUpdate, db: Session = Depends(get_db)):
     """更新作品（包含编码和图片关联）"""
     db_project = db.query(Project).filter(Project.id == project_id).first()
     if not db_project:
@@ -239,8 +249,11 @@ def update_project(project_id: int, project: ProjectUpdate, db: Session = Depend
     db.commit()
     db.refresh(db_project)
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    project_dict = serialize_model(db_project)
+    project_dict = serialize_model(db_project, base_url)
     
     return {
         "code": 200,

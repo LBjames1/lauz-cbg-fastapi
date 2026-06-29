@@ -53,3 +53,14 @@ def get_presigned_url(client, bucket_name, object_name, expires=604800):
         return client.presigned_get_object(bucket_name, object_name, expires=expires)
     except S3Error as e:
         raise Exception(f"Failed to get presigned URL: {e}")
+
+def get_image_data(client, bucket_name, object_name):
+    """获取图片二进制数据"""
+    try:
+        response = client.get_object(bucket_name, object_name)
+        image_data = response.read()
+        response.close()
+        response.release_conn()
+        return image_data
+    except S3Error as e:
+        raise Exception(f"Failed to get image data: {e}")

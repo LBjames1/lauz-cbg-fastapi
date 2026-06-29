@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -58,7 +58,7 @@ def get_recent_fabrics(
     }
 
 @router.post("", response_model=ApiResponse, status_code=status.HTTP_201_CREATED)
-def create_fabric(fabric: FabricCreate, db: Session = Depends(get_db)):
+def create_fabric(request: Request, fabric: FabricCreate, db: Session = Depends(get_db)):
     """创建布料（包含编码和图片关联）"""
     # 提取关联字段
     material_id = fabric.material_id
@@ -105,8 +105,11 @@ def create_fabric(fabric: FabricCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_fabric)
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    fabric_dict = serialize_model(db_fabric)
+    fabric_dict = serialize_model(db_fabric, base_url)
     
     return {
         "code": 201,
@@ -115,7 +118,7 @@ def create_fabric(fabric: FabricCreate, db: Session = Depends(get_db)):
     }
 
 @router.get("/{fabric_id}", response_model=ApiResponse)
-def get_fabric(fabric_id: int, db: Session = Depends(get_db)):
+def get_fabric(fabric_id: int, request: Request, db: Session = Depends(get_db)):
     """获取布料详情（包含关联的编码和图片信息）"""
     fabric = db.query(Fabric).filter(Fabric.id == fabric_id).first()
     if not fabric:
@@ -127,8 +130,11 @@ def get_fabric(fabric_id: int, db: Session = Depends(get_db)):
         Image.entity_id == fabric_id
     ).all()
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    fabric_dict = serialize_model(fabric)
+    fabric_dict = serialize_model(fabric, base_url)
     
     return {
         "code": 200,
@@ -138,6 +144,7 @@ def get_fabric(fabric_id: int, db: Session = Depends(get_db)):
 
 @router.get("", response_model=ApiResponse)
 def list_fabrics(
+    request: Request,
     page: int = Query(1, ge=1, description="页码，从 1 开始"),
     limit: int = Query(10, ge=1, le=100, description="每页数量"),
     name: Optional[str] = Query(None, description="布料名称"),
@@ -204,8 +211,11 @@ def list_fabrics(
             Image.entity_id == fabric.id
         ).all()
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    serialized_fabrics = serialize_list(fabrics)
+    serialized_fabrics = serialize_list(fabrics, base_url)
     
     # 转换为标准分页格式
     return {
@@ -221,7 +231,7 @@ def list_fabrics(
     }
 
 @router.put("/{fabric_id}", response_model=ApiResponse)
-def update_fabric(fabric_id: int, fabric: FabricUpdate, db: Session = Depends(get_db)):
+def update_fabric(fabric_id: int, request: Request, fabric: FabricUpdate, db: Session = Depends(get_db)):
     """更新布料（包含编码和图片关联）"""
     db_fabric = db.query(Fabric).filter(Fabric.id == fabric_id).first()
     if not db_fabric:
@@ -273,8 +283,11 @@ def update_fabric(fabric_id: int, fabric: FabricUpdate, db: Session = Depends(ge
     db.commit()
     db.refresh(db_fabric)
     
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/')
+    
     # 序列化为字典格式
-    fabric_dict = serialize_model(db_fabric)
+    fabric_dict = serialize_model(db_fabric, base_url)
     
     return {
         "code": 200,

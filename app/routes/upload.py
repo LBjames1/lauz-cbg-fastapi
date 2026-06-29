@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form, Response
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
 from ..models import Image
 from ..schemas import ImageCreate, ImageResponse, ApiResponse, ImageBase
-from ..minio_client import init_minio_client, upload_file, get_presigned_url
+from ..minio_client import init_minio_client, upload_file, get_presigned_url, get_image_data
 from ..config import settings
 import uuid
 
@@ -166,6 +166,37 @@ async def download_file(image_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=500, 
             detail=f"Failed to generate download URL: {str(e)}. Image URL: {image.image_url}, Filename: {filename if 'filename' in locals() else 'N/A'}"
+        )
+
+@router.get("/images/{image_id}/view")
+async def view_image(image_id: int, db: Session = Depends(get_db)):
+    """直接查看图片（返回图片二进制数据，适用于无法直接访问MinIO的场景）"""
+    # 从数据库获取图片记录
+    image = db.query(Image).filter(Image.id == image_id).first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    try:
+        # 从图片URL中提取文件名
+        filename = image.image_url.split("/")[-1]
+        
+        # 从 MinIO 获取图片二进制数据
+        image_data = get_image_data(minio_client, settings.MINIO_BUCKET_NAME, filename)
+        
+        # 根据文件扩展名确定内容类型
+        content_type = "image/jpeg"  # 默认
+        if filename.lower().endswith('.png'):
+            content_type = "image/png"
+        elif filename.lower().endswith('.gif'):
+            content_type = "image/gif"
+        elif filename.lower().endswith('.webp'):
+            content_type = "image/webp"
+        
+        return Response(content=image_data, media_type=content_type)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to retrieve image: {str(e)}"
         )
 
 @router.put("/images/{image_id}/associate", response_model=ApiResponse)

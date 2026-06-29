@@ -144,12 +144,13 @@ def filter_by_code_ids(query, model, db: Session, code_type: str, code_ids: List
     return query
 
 
-def serialize_model(model_instance: Any) -> dict:
+def serialize_model(model_instance: Any, base_url: str = None) -> dict:
     """
     将SQLAlchemy模型实例转换为可序列化的字典
     
     Args:
         model_instance: SQLAlchemy模型实例
+        base_url: API基础URL，用于生成可直接访问的图片URL
         
     Returns:
         可序列化的字典
@@ -176,22 +177,33 @@ def serialize_model(model_instance: Any) -> dict:
         if attr_name not in result and hasattr(attr_value, '__class__'):
             # 如果是列表（多对多关系）
             if isinstance(attr_value, list):
-                result[attr_name] = [serialize_model(item) if hasattr(item, '__table__') else item for item in attr_value]
+                serialized_items = []
+                for item in attr_value:
+                    if hasattr(item, '__table__'):
+                        serialized_item = serialize_model(item, base_url)
+                        # 如果是图片对象，添加view_url
+                        if hasattr(item, 'image_url') and base_url:
+                            serialized_item['view_url'] = f"{base_url}/api/upload/images/{item.id}/view"
+                        serialized_items.append(serialized_item)
+                    else:
+                        serialized_items.append(item)
+                result[attr_name] = serialized_items
             # 如果是单个对象（一对多关系）
             elif hasattr(attr_value, '__table__'):
-                result[attr_name] = serialize_model(attr_value)
+                result[attr_name] = serialize_model(attr_value, base_url)
     
     return result
 
 
-def serialize_list(model_instances: List[Any]) -> List[dict]:
+def serialize_list(model_instances: List[Any], base_url: str = None) -> List[dict]:
     """
     将SQLAlchemy模型实例列表转换为可序列化的字典列表
     
     Args:
         model_instances: SQLAlchemy模型实例列表
+        base_url: API基础URL，用于生成可直接访问的图片URL
         
     Returns:
         可序列化的字典列表
     """
-    return [serialize_model(instance) for instance in model_instances]
+    return [serialize_model(instance, base_url) for instance in model_instances]
